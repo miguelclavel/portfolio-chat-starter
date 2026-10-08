@@ -1,0 +1,224 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Portfolio chat starter · Miguel Clavel</title>
+<meta name="description" content="A portfolio people can talk to, in one file. Answers you write yourself, typo tolerant matching, quick or detailed answers, a job post matcher, and a list of questions it couldn't answer yet. By Miguel Clavel.">
+<style>
+  :root { --page: #F9F9FB; --panel: #FFFFFF; --ink: #1D1D21; --muted: #67676C; --rule: #DADADD; --soft: #ECECF0; --link: #1F5FD1; --focus: #155EEF; }
+  @media (prefers-color-scheme: dark) { :root { --page: #0F0F11; --panel: #17171A; --ink: #F5F5F7; --muted: #A3A3A8; --rule: #2E2E33; --soft: #222226; --link: #7AAEFF; --focus: #9CC3FF; } }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; }
+  body { background: var(--page); color: var(--ink); font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif; line-height: 1.55; -webkit-font-smoothing: antialiased; display: flex; flex-direction: column; }
+  a { color: var(--link); }
+  :focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+  header { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 14px 20px; }
+  .who { display: flex; align-items: center; gap: 10px; }
+  .avatar { width: 34px; height: 34px; border-radius: 50%; display: grid; place-items: center; background: var(--ink); color: var(--page); font-weight: 700; font-size: 14px; }
+  .who b { display: block; font-size: 15px; line-height: 1.2; } .who small { color: var(--muted); font-size: 13px; }
+  .mode { display: inline-flex; border: 1px solid var(--rule); border-radius: 999px; padding: 3px; background: var(--panel); }
+  .mode button { font: inherit; font-size: 13px; font-weight: 600; border: 0; border-radius: 999px; padding: 5px 12px; background: none; color: var(--muted); cursor: pointer; }
+  .mode button[aria-pressed="true"] { background: var(--ink); color: var(--page); }
+  main { flex: 1; overflow-y: auto; }
+  .col { width: min(760px, 100% - 32px); margin: 0 auto; }
+  .start { text-align: center; padding: 10vh 0 24px; }
+  .start h1 { margin: 0; font-size: clamp(34px, 6vw, 52px); letter-spacing: -0.035em; line-height: 1.05; }
+  .start p { color: var(--muted); font-size: 17px; margin: 12px auto 0; max-width: 560px; }
+  .try { margin: 26px 0 0; font-size: 12px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
+  .chips { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; margin-top: 10px; }
+  .chips button { font: inherit; font-size: 14px; padding: 8px 14px; border: 1px solid var(--rule); border-radius: 999px; background: var(--panel); color: var(--ink); cursor: pointer; }
+  .log { padding: 20px 0 8px; display: flex; flex-direction: column; gap: 16px; }
+  .q { align-self: flex-end; max-width: 80%; background: var(--soft); padding: 10px 14px; border-radius: 16px; }
+  .a { max-width: 100%; }
+  .a p { margin: 0 0 10px; }
+  .a .links { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 4px; }
+  .a .links a { font-size: 14px; padding: 6px 12px; border: 1px solid var(--rule); border-radius: 999px; text-decoration: none; color: var(--ink); background: var(--panel); }
+  .a .src { font-size: 12px; color: var(--muted); margin-top: 8px; }
+  .match { border: 1px solid var(--rule); border-radius: 14px; background: var(--panel); padding: 14px 16px; margin-top: 6px; }
+  .match h3 { margin: 0 0 4px; font-size: 16px; } .match .skills { font-size: 13px; color: var(--muted); }
+  mark { background: #FFD84D; color: #101012; border-radius: 4px; padding: 0 3px; }
+  .composer { padding: 10px 0 18px; }
+  .box { border: 1px solid var(--rule); border-radius: 18px; background: var(--panel); padding: 10px 10px 10px 14px; display: flex; gap: 8px; align-items: flex-end; box-shadow: 0 6px 24px rgba(0,0,0,.05); }
+  textarea { flex: 1; border: 0; resize: none; font: inherit; font-size: 16px; background: none; color: var(--ink); outline: none; max-height: 200px; padding: 6px 0; }
+  .send { width: 36px; height: 36px; border: 0; border-radius: 12px; background: var(--ink); color: var(--page); cursor: pointer; font-size: 18px; }
+  .tools { display: flex; justify-content: space-between; gap: 8px; margin-top: 8px; font-size: 13px; color: var(--muted); flex-wrap: wrap; }
+  .tools button { font: inherit; font-size: 13px; background: none; border: 0; color: var(--link); cursor: pointer; padding: 0; }
+  .unanswered { margin-top: 10px; font-size: 13px; color: var(--muted); }
+  .unanswered ul { margin: 6px 0 0; padding-left: 18px; }
+</style>
+</head>
+<body>
+<header>
+  <div class="who"><div class="avatar" id="initials" aria-hidden="true"></div><div><b id="name"></b><small id="title"></small></div></div>
+  <div class="mode" role="group" aria-label="Answer length"><button type="button" data-mode="quick" aria-pressed="true">Quick</button><button type="button" data-mode="detailed" aria-pressed="false">Detailed</button></div>
+</header>
+<main id="main">
+  <div class="col">
+    <section class="start" id="start">
+      <h1 id="hello"></h1>
+      <p id="intro"></p>
+      <p class="try">Try asking</p>
+      <div class="chips" id="chips"></div>
+    </section>
+    <div class="log" id="log" role="log" aria-live="polite" aria-label="Conversation"></div>
+  </div>
+</main>
+<div class="col composer">
+  <form class="box" id="form">
+    <label for="input" class="sr" style="position:absolute;left:-9999px">Ask a question, or paste a job post</label>
+    <textarea id="input" rows="1" placeholder="Ask about my work, or paste a job post"></textarea>
+    <button class="send" type="submit" aria-label="Send">↑</button>
+  </form>
+  <div class="tools"><span>Answers are written by me. Nothing you type leaves your browser.</span><button type="button" id="showMissed">Questions it couldn't answer yet</button></div>
+  <div class="unanswered" id="missed" hidden></div>
+</div>
+<script>
+// ---------------------------------------------------------------------------
+// Your content. Replace everything in CONTENT with your own: the chat only
+// ever answers with what you write here, so it can never make things up.
+// ---------------------------------------------------------------------------
+const CONTENT = {
+  name: 'Miguel Clavel',
+  // Other ways people refer to you; questions about you in the third person are
+  // read as questions to you ("tell me about Miguel's work" = "tell me about your work").
+  aliases: ['miguel clavel', 'miguel', 'clavel', 'he', 'him', 'his'],
+  title: 'Senior Product Designer',
+  hello: 'Hi, I’m Miguel.',
+  intro: 'Senior Product Designer for fintech, insurance and credit. Ask me about my work, my process, or how I use AI. Or paste a job post to see where my work fits.',
+  suggestions: ['What’s your experience?', 'Show me your best work', 'How do you use AI?', 'How do you work?', 'How can I reach you?'],
+  answers: [
+    { id: 'experience', words: ['experience', 'background', 'career', 'resume', 'cv', 'history', 'worked', 'jobs', 'roles', 'years'],
+      quick: 'Ten years in design. Senior Product Designer at U.S. News & World Report since 2022, working on insurance, credit cards and loans. Before that the Miami HEAT, Empire Medical Training and BLU Products.',
+      detailed: 'Ten years in design, the last four at U.S. News & World Report, on products used by more than 40 million people a year. Since 2025 I lead product design for credit cards, insurance and loans; before that, enterprise systems and 360 Reviews. Earlier: the digital relaunch of HEAT.com for the Miami HEAT, conversion pages for Empire Medical Training, and more than 20 phone launches at BLU Products.',
+      links: [['Resume', 'https://miguelclavel.com/assets/Miguel-Clavel-Senior-Product-Designer-Resume-2026.pdf']] },
+    { id: 'work', words: ['work', 'portfolio', 'projects', 'case', 'studies', 'best', 'examples', 'show', 'proud', 'strongest'],
+      quick: 'Start with the conversational insurance quote: a 30 question form rebuilt as a conversation, one clear question at a time.',
+      detailed: 'Three to start with. The conversational insurance quote turned 23 form fields into 19 questions across 5 stages, answered by tapping. The insurance hub rebuild followed heatmaps showing 26.6% of mobile clicks landing on things that weren’t links, and moved the site audit score from 66 to 88. The U.S. News brand guide went from a book nobody owned to rules teams follow.',
+      links: [['Conversational insurance quote', 'https://miguelclavel.com/work/auto-insurance-conversational-flow'], ['Insurance hub', 'https://miguelclavel.com/work/insurance-landing-page'], ['All twelve', 'https://miguelclavel.com']] },
+    { id: 'ai', words: ['ai', 'claude', 'chatgpt', 'gemini', 'prompt', 'prompts', 'llm', 'agentic', 'artificial', 'intelligence', 'automation'],
+      quick: 'Daily and hands on: research synthesis, exploring directions, and working prototypes instead of pictures of them. It cut my synthesis time by about 40%.',
+      detailed: 'I use AI daily and hands on, for research synthesis, exploring directions, and building working prototypes rather than pictures of them: Claude, Claude Code, ChatGPT, Gemini, Figma Make and v0. It cut my synthesis time by about 40%. It hasn’t replaced the judgment part. I design AI products around human oversight, user control, transparency, correction and recovery, predictable outcomes and clear boundaries.',
+      links: [['AI UX patterns', 'https://github.com/miguelclavel/ai-ux-patterns']] },
+    { id: 'process', words: ['process', 'approach', 'work', 'method', 'framing', 'start', 'begin', 'research'], when: ['how'],
+      quick: 'Before I open Figma I ask: what behavior are we trying to change, what evidence says it’s the real problem, and what happens if we do nothing?',
+      detailed: 'Frame the problem first: what behavior are we trying to change, what evidence says it’s the real problem, what happens if we do nothing. Then let the evidence pick the direction, explore fast with AI and check its work, ask for one decision at a time, build the system and not just the screen, test on a cadence, check every state before shipping, and keep listening after launch.',
+      links: [['Product design playbook', 'https://github.com/miguelclavel/product-design-playbook']] },
+    { id: 'contact', words: ['contact', 'reach', 'email', 'talk', 'hire', 'linkedin', 'call', 'connect', 'message'],
+      quick: 'Email is best: hello@miguelclavel.com. I’m also on LinkedIn.',
+      detailed: 'Email is best: hello@miguelclavel.com. I’m also on LinkedIn as miguelclavel, and the full portfolio is at miguelclavel.com.',
+      links: [['Email', 'mailto:hello@miguelclavel.com'], ['LinkedIn', 'https://www.linkedin.com/in/miguelclavel/']] },
+    { id: 'tools', words: ['tools', 'figma', 'software', 'stack', 'use', 'figjam'],
+      quick: 'Figma and FigJam, Figma Make, Claude and Claude Code, v0, analytics and heatmaps.',
+      detailed: 'Figma and FigJam for design, Figma Make and v0 for quick prototypes, Claude and Claude Code for synthesis and building working prototypes, plus analytics and heatmap tools to see what people actually do.' },
+    { id: 'education', words: ['education', 'degree', 'school', 'university', 'college', 'study', 'studied'],
+      quick: 'Florida Atlantic University, BFA in Graphic Design.',
+      detailed: 'A BFA in Graphic Design from Florida Atlantic University, then ten years of learning on the job, most of it in insurance, financial decisions and large content platforms.' },
+  ],
+  // For the job post matcher: each project with the skills it shows.
+  projects: [
+    { title: 'Conversational insurance quote', url: 'https://miguelclavel.com/work/auto-insurance-conversational-flow', skills: ['conversational', 'conversation design', 'insurance', 'fintech', 'accessibility', 'forms', 'research', 'information architecture', 'agentic', 'ai'] },
+    { title: 'Insurance hub rebuild', url: 'https://miguelclavel.com/work/insurance-landing-page', skills: ['insurance', 'heatmaps', 'analytics', 'conversion', 'seo', 'information architecture', 'responsive', 'data informed'] },
+    { title: 'Comparison system', url: 'https://miguelclavel.com/work/comparison-system', skills: ['design systems', 'components', 'comparison', 'decision support', 'accessibility', 'handoff', 'mobile'] },
+    { title: 'U.S. News brand guide', url: 'https://miguelclavel.com/work/us-news-brand-guide', skills: ['brand', 'design systems', 'governance', 'documentation', 'stakeholders', 'typography'] },
+    { title: 'Monthly testing review', url: 'https://miguelclavel.com/work/monthly-testing-review', skills: ['experimentation', 'a/b testing', 'testing', 'analytics', 'synthesis', 'data informed'] },
+    { title: 'Miami HEAT homepage', url: 'https://miguelclavel.com/work/miami-heat-homepage', skills: ['content', 'cms', 'ecommerce', 'commerce', 'responsive', 'sports', 'editorial'] },
+  ],
+  fallback: 'I haven’t written an answer to that yet. I’ve noted the question so I can add one. Meanwhile, try one of these:',
+};
+
+// ---------------------------------------------------------------------------
+// Matching. Plain rules, no AI: normalise the text, read third person
+// questions as questions to you, forgive small typos, then score each answer
+// by the words it shares with the question.
+// ---------------------------------------------------------------------------
+const STOP = new Set('a an the is are was were do does did you your yours me my i to of in on for and or about can could would will tell what whats how who where when which why with it its this that there be have has please'.split(' '));
+const VOCAB = new Set(CONTENT.answers.flatMap(a => [...a.words, ...(a.when || [])]));
+function normalise(text) {
+  let t = ' ' + text.toLowerCase().replace(/[‘’`]/g, "'").replace(/'s\b/g, '').replace(/[^a-z0-9/'\s]/g, ' ').replace(/\s+/g, ' ').trim() + ' ';
+  for (const a of [...CONTENT.aliases].sort((x, y) => y.length - x.length)) t = t.split(' ' + a + ' ').join(' you ').split(' ' + a + 's ').join(' you ');
+  return t.trim();
+}
+function lev(a, b) {
+  const d = Array.from({ length: a.length + 1 }, (_, i) => [i]);
+  for (let j = 1; j <= b.length; j++) d[0][j] = j;
+  for (let i = 1; i <= a.length; i++) for (let j = 1; j <= b.length; j++) {
+    d[i][j] = Math.min(d[i - 1][j] + 1, d[i][j - 1] + 1, d[i - 1][j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1));
+    // Two swapped letters ("wrok") count as one slip, not two.
+    if (i > 1 && j > 1 && a[i - 1] === b[j - 2] && a[i - 2] === b[j - 1]) d[i][j] = Math.min(d[i][j], d[i - 2][j - 2] + 1);
+  }
+  return d[a.length][b.length];
+}
+// "experiance" becomes "experience": the closest known word within one or two letters.
+function fix(word) {
+  if (word.length < 4 || VOCAB.has(word) || STOP.has(word)) return word;
+  const max = word.length >= 7 ? 2 : 1;
+  let best = word, bd = max + 1;
+  for (const v of VOCAB) { if (Math.abs(v.length - word.length) > max) continue; const dd = lev(word, v); if (dd < bd) { bd = dd; best = v; } }
+  return best;
+}
+function classify(text) {
+  const words = normalise(text).split(' ').map(fix);
+  let best = null, top = 0;
+  for (const a of CONTENT.answers) {
+    let s = 0;
+    for (const w of words) if (a.words.includes(w)) s += 2; else if ((a.when || []).includes(w)) s += 0.5;
+    if (s > top) { top = s; best = a; }
+  }
+  return top >= 2 ? best : null;
+}
+
+// A job post: long text that mentions things like "requirements" or "you will".
+const looksLikeJobPost = t => t.length > 280 || /responsibilit|requirement|qualification|you will|we are looking|years of experience/i.test(t);
+function matchJob(text) {
+  const low = ' ' + text.toLowerCase().replace(/[^a-z0-9/\s]/g, ' ').replace(/\s+/g, ' ') + ' ';
+  return CONTENT.projects.map(p => ({ ...p, hits: p.skills.filter(s => low.includes(' ' + s + ' ') || low.includes(' ' + s + 's ')) }))
+    .filter(p => p.hits.length).sort((a, b) => b.hits.length - a.hits.length).slice(0, 3);
+}
+
+// ---------------------------------------------------------------------------
+// The page.
+// ---------------------------------------------------------------------------
+const $ = id => document.getElementById(id);
+const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+let mode = 'quick';
+$('name').textContent = CONTENT.name; $('title').textContent = CONTENT.title; $('hello').textContent = CONTENT.hello; $('intro').textContent = CONTENT.intro;
+$('initials').textContent = CONTENT.name.split(' ').map(w => w[0]).join('').slice(0, 2);
+const chip = q => `<button type="button" data-q="${esc(q)}">${esc(q)}</button>`;
+$('chips').innerHTML = CONTENT.suggestions.map(chip).join('');
+
+const store = { get: () => { try { return JSON.parse(localStorage.getItem('chat-missed') || '[]'); } catch (e) { return []; } },
+                add: q => { try { const l = store.get(); if (!l.includes(q)) { l.push(q); localStorage.setItem('chat-missed', JSON.stringify(l.slice(-50))); } } catch (e) {} } };
+
+function answerHtml(text) {
+  if (looksLikeJobPost(text)) {
+    const m = matchJob(text);
+    if (!m.length) return `<p>I couldn’t find a clear match in that post. Try pasting the requirements section, or ask me about a specific skill.</p>`;
+    return `<p>Here’s where my work lines up with that role, strongest match first:</p>` + m.map(p => `<div class="match"><h3><a href="${esc(p.url)}">${esc(p.title)}</a></h3><div class="skills">Matches: ${p.hits.map(h => `<mark>${esc(h)}</mark>`).join(' ')}</div></div>`).join('') + `<p class="src">Matched on the skills each project shows. Nothing was sent anywhere.</p>`;
+  }
+  const a = classify(text);
+  if (!a) { store.add(text.trim().slice(0, 200)); return `<p>${esc(CONTENT.fallback)}</p><div class="chips" style="justify-content:flex-start">${CONTENT.suggestions.slice(0, 3).map(chip).join('')}</div>`; }
+  return `<p>${esc(a[mode] || a.quick)}</p>${a.links ? `<div class="links">${a.links.map(([l, u]) => `<a href="${esc(u)}">${esc(l)}</a>`).join('')}</div>` : ''}<p class="src">Written by ${esc(CONTENT.name.split(' ')[0])}, from the resume and case studies.</p>`;
+}
+function ask(text) {
+  if (!text.trim()) return;
+  $('start').hidden = true;
+  $('log').insertAdjacentHTML('beforeend', `<div class="q">${esc(text.length > 300 ? text.slice(0, 300) + '…' : text)}</div><div class="a">${answerHtml(text)}</div>`);
+  $('main').scrollTop = $('main').scrollHeight;
+}
+document.addEventListener('click', e => { const b = e.target.closest('[data-q]'); if (b) ask(b.dataset.q); });
+$('form').addEventListener('submit', e => { e.preventDefault(); ask($('input').value); $('input').value = ''; $('input').style.height = ''; });
+$('input').addEventListener('keydown', e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); $('form').requestSubmit(); } });
+$('input').addEventListener('input', e => { e.target.style.height = 'auto'; e.target.style.height = e.target.scrollHeight + 'px'; });
+document.querySelectorAll('[data-mode]').forEach(b => b.addEventListener('click', () => { mode = b.dataset.mode; document.querySelectorAll('[data-mode]').forEach(x => x.setAttribute('aria-pressed', String(x === b))); }));
+// The weekly loop, locally: the questions it couldn't answer, so you know what to write next.
+$('showMissed').addEventListener('click', () => {
+  const l = store.get(), box = $('missed');
+  box.hidden = !box.hidden;
+  box.innerHTML = l.length ? `Saved in this browser only:<ul>${l.map(q => `<li>${esc(q)}</li>`).join('')}</ul>` : 'None yet. Every question so far had an answer.';
+});
+// ?ask= opens with a question, handy for links and for testing.
+const first = new URLSearchParams(location.search).get('ask'); if (first) ask(first);
+</script>
+</body>
+</html>
